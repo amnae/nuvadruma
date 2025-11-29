@@ -111,8 +111,8 @@
           webkit-playsinline
           muted
           preload="auto"
-          data-start="0"
-          data-end="5"
+          data-start="5"
+          data-end="10"
         ></video>
       </article>
       
@@ -324,7 +324,6 @@
   document.addEventListener("DOMContentLoaded", function () {
     var videos = document.querySelectorAll("video[data-start][data-end]");
 
-    // Turn NodeList into an array-like loop for older browsers
     Array.prototype.forEach.call(videos, function (video) {
       var start = parseFloat(video.getAttribute("data-start")) || 0;
       var end = parseFloat(video.getAttribute("data-end"));
@@ -333,7 +332,6 @@
       video.addEventListener("loadedmetadata", function () {
         var duration = video.duration;
 
-        // Clamp values into valid range
         if (start < 0) start = 0;
         if (isNaN(end) || end <= start) {
           end = duration - 0.05;
@@ -342,17 +340,15 @@
           end = duration - 0.05;
         }
 
-        // Store adjusted values in data-* attributes
         video.setAttribute("data-loop-start", start);
         video.setAttribute("data-loop-end", end);
 
-        // Start the video at the loop start
+        // TRY to jump to the loop start once we know the duration
         if (start < duration) {
           video.currentTime = start;
         }
       });
 
-      // When user presses play, start a timer to enforce the loop
       video.addEventListener("play", function () {
         var loopStartAttr =
           video.getAttribute("data-loop-start") ||
@@ -364,7 +360,7 @@
         var loopStart = parseFloat(loopStartAttr) || 0;
         var loopEnd = parseFloat(loopEndAttr);
 
-        // Make sure we start inside the loop window
+        // First play: force us into the loop window
         if (
           video.currentTime < loopStart ||
           (!isNaN(loopEnd) && video.currentTime > loopEnd)
@@ -379,8 +375,6 @@
         loopTimer = setInterval(function () {
           if (video.paused || video.readyState < 2) return;
 
-          var now = video.currentTime;
-
           var sAttr =
             video.getAttribute("data-loop-start") ||
             video.getAttribute("data-start");
@@ -390,15 +384,21 @@
 
           var s = parseFloat(sAttr) || 0;
           var e = parseFloat(eAttr);
+          var now = video.currentTime;
 
+          // If we somehow start before the loop start (mobile oddities), snap forward
+          if (now < s - 0.02) {
+            video.currentTime = s;
+            return;
+          }
+
+          // Normal loop: when we reach the end, jump back to the start
           if (!isNaN(e) && now >= e) {
-            // Jump back near the start; no extra play() needed
             video.currentTime = s + 0.01;
           }
         }, 80);
       });
 
-      // Stop timer when paused
       video.addEventListener("pause", function () {
         if (loopTimer) {
           clearInterval(loopTimer);
@@ -406,7 +406,6 @@
         }
       });
 
-      // Also clear timer when playback ends
       video.addEventListener("ended", function () {
         if (loopTimer) {
           clearInterval(loopTimer);
@@ -416,6 +415,7 @@
     });
   });
 </script>
+
 
 
 
