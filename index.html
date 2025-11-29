@@ -296,22 +296,20 @@
       <strong>playsinline</strong>, which is why those attributes are set by default.
     </p>
   </main>
+
   <script>
   document.addEventListener("DOMContentLoaded", () => {
-    const isIOS =
-      /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
     const videos = document.querySelectorAll("video[data-start][data-end]");
 
     videos.forEach((video) => {
       let start = parseFloat(video.dataset.start) || 0;
       let end = parseFloat(video.dataset.end);
-      let isSeekingLoop = false; // flag for iOS Safari
+      let loopTimer = null;
 
       video.addEventListener("loadedmetadata", () => {
         const duration = video.duration;
 
-        // Clamp range
+        // Clamp values into valid range
         if (start < 0) start = 0;
         if (isNaN(end) || end <= start) {
           end = duration - 0.05;
@@ -323,54 +321,66 @@
         video.dataset._loopStart = start;
         video.dataset._loopEnd = end;
 
+        // Start the video at the loop start
         if (start < duration) {
           video.currentTime = start;
         }
       });
 
-      video.addEventListener("timeupdate", () => {
-        const loopStart =
-          parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
-        const loopEnd =
-          parseFloat(video.dataset._loopEnd ?? video.dataset.end);
-
-        if (isNaN(loopEnd)) return;
-
-        if (!isSeekingLoop && video.currentTime >= loopEnd) {
-          // Mark that we're doing a manual seek for the loop
-          isSeekingLoop = true;
-          // Jump back near the start
-          video.currentTime = loopStart + 0.01;
-        }
-      });
-
-      // When the seek finishes, resume play if we were looping
-      video.addEventListener("seeked", () => {
-        if (isSeekingLoop) {
-          isSeekingLoop = false;
-          // On iOS Safari it's safer to re-call play() here
-          if (!video.paused) {
-            video.play();
-          }
-        }
-      });
-
-      // Optional: when user hits play, start inside the loop range
+      // When user presses play, start a timer to enforce the loop
       video.addEventListener("play", () => {
         const loopStart =
           parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
         const loopEnd =
           parseFloat(video.dataset._loopEnd ?? video.dataset.end);
+
+        // Make sure we start inside the loop window
         if (
           video.currentTime < loopStart ||
           (!isNaN(loopEnd) && video.currentTime > loopEnd)
         ) {
           video.currentTime = loopStart;
         }
+
+        // Clear any existing timer
+        if (loopTimer) clearInterval(loopTimer);
+
+        // Check position every 50ms while playing
+        loopTimer = setInterval(() => {
+          if (video.paused || video.readyState < 2) return;
+
+          const now = video.currentTime;
+          const s =
+            parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
+          const e =
+            parseFloat(video.dataset._loopEnd ?? video.dataset.end);
+
+          if (!isNaN(e) && now >= e) {
+            // Just jump back – no extra play() call needed
+            video.currentTime = s + 0.01;
+          }
+        }, 50);
+      });
+
+      // Stop timer when paused
+      video.addEventListener("pause", () => {
+        if (loopTimer) {
+          clearInterval(loopTimer);
+          loopTimer = null;
+        }
+      });
+
+      // Also clear timer when playback really ends
+      video.addEventListener("ended", () => {
+        if (loopTimer) {
+          clearInterval(loopTimer);
+          loopTimer = null;
+        }
       });
     });
   });
 </script>
+
 
 
 </body>
