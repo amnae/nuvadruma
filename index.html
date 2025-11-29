@@ -229,47 +229,61 @@
       <strong>playsinline</strong>, which is why those attributes are set by default.
     </p>
   </main>
-
-  <script>
-    // Find all videos with data-start / data-end
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
     const videos = document.querySelectorAll("video[data-start][data-end]");
 
     videos.forEach((video) => {
-      const start = parseFloat(video.dataset.start) || 0;
-      const end = parseFloat(video.dataset.end);
+      let start = parseFloat(video.dataset.start) || 0;
+      let end = parseFloat(video.dataset.end);
 
-      if (isNaN(end) || end <= start) {
-        console.warn("Invalid loop points for video:", video);
-        return;
-      }
-
-      // When metadata is loaded, jump to start time
       video.addEventListener("loadedmetadata", () => {
-        if (start > 0 && start < video.duration) {
-          video.currentTime = start;
+        const duration = video.duration;
+        console.log("Video duration:", duration, "seconds");
+
+        // Clamp start & end into valid range
+        if (start < 0) start = 0;
+        if (isNaN(end) || end <= start) {
+          console.warn("Invalid end time, defaulting to full duration");
+          end = duration - 0.05;
         }
+        if (end > duration) {
+          console.warn("data-end is beyond duration, clamping.", { end, duration });
+          end = duration - 0.05;
+        }
+
+        // Jump to the start of the loop
+        video.currentTime = Math.min(start, duration - 0.05);
+
+        // Store the (possibly adjusted) values so timeupdate uses them
+        video.dataset._loopStart = start;
+        video.dataset._loopEnd = end;
       });
 
-      // On each time update, if we've gone past end, jump back to start
       video.addEventListener("timeupdate", () => {
-        if (video.currentTime >= end) {
-          // small offset to avoid getting stuck due to timing precision
-          video.currentTime = start + 0.01;
-          // keep playing automatically if it was playing
+        const loopStart = parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
+        const loopEnd = parseFloat(video.dataset._loopEnd ?? video.dataset.end);
+
+        if (!isNaN(loopEnd) && video.currentTime >= loopEnd) {
+          // Jump back to the loop start
+          video.currentTime = loopStart + 0.01;
           if (!video.paused) {
             video.play();
           }
         }
       });
 
-      // Optional: when the user presses "play", always start loop at `start`
+      // Optional: when user hits play, make sure we start inside the loop
       video.addEventListener("play", () => {
-        if (video.currentTime < start || video.currentTime > end) {
-          video.currentTime = start;
+        const loopStart = parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
+        const loopEnd = parseFloat(video.dataset._loopEnd ?? video.dataset.end);
+        if (video.currentTime < loopStart || (!isNaN(loopEnd) && video.currentTime > loopEnd)) {
+          video.currentTime = loopStart;
         }
       });
     });
-  </script>
-<script src="loop.js" defer></script>
+  });
+</script>
+
 </body>
 </html>
