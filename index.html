@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Looping Video Gallery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #060712;
+      color: #f5f5f5;
+    }
+
+    header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    header p {
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.75;
+    }
+
+    main {
+      padding: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .video-card {
+      background: radial-gradient(circle at top left, #15182b, #05060d);
+      border-radius: 1rem;
+      padding: 1rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .video-card h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+    }
+
+    .video-meta {
+      font-size: 0.75rem;
+      opacity: 0.7;
+      margin-bottom: 0.75rem;
+    }
+
+    video {
+      width: 100%;
+      display: block;
+      border-radius: 0.75rem;
+      outline: none;
+      background: black;
+    }
+
+    .note {
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+
+    @media (max-width: 600px) {
+      header, main {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Looping Video Page</h1>
+      <p>Each video loops between a custom start and end time.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid">
+      <!-- VIDEO 1 -->
+      <article class="video-card">
+        <h2>Video 1</h2>
+        <div class="video-meta">
+          Loop from <span>2s</span> to <span>8s</span>.
+        </div>
+
+        <!--
+          IMPORTANT:
+          - Replace "videos/video1.mp4" with your file path.
+          - data-start / data-end are in SECONDS.
+        -->
+        <video
+          src="videos/video1.mp4"
+          controls
+          muted
+          playsinline
+          data-start="2"
+          data-end="8"
+        ></video>
+      </article>
+
+      <!-- VIDEO 2 -->
+      <article class="video-card">
+        <h2>Video 2</h2>
+        <div class="video-meta">
+          Loop from <span>5s</span> to <span>12.5s</span>.
+        </div>
+
+        <video
+          src="videos/video2.mp4"
+          controls
+          muted
+          playsinline
+          data-start="5"
+          data-end="12.5"
+        ></video>
+      </article>
+
+      <!-- Add more <article class="video-card"> blocks for more videos -->
+    </section>
+
+    <p class="note">
+      Tip: Autoplay on mobile usually requires videos to be <strong>muted</strong> and
+      <strong>playsinline</strong>, which is why those attributes are set by default.
+    </p>
+  </main>
+
+  <script>
+    // Find all videos with data-start / data-end
+    const videos = document.querySelectorAll("video[data-start][data-end]");
+
+    videos.forEach((video) => {
+      const start = parseFloat(video.dataset.start) || 0;
+      const end = parseFloat(video.dataset.end);
+
+      if (isNaN(end) || end <= start) {
+        console.warn("Invalid loop points for video:", video);
+        return;
+      }
+
+      // When metadata is loaded, jump to start time
+      video.addEventListener("loadedmetadata", () => {
+        if (start > 0 && start < video.duration) {
+          video.currentTime = start;
+        }
+      });
+
+      // On each time update, if we've gone past end, jump back to start
+      video.addEventListener("timeupdate", () => {
+        if (video.currentTime >= end) {
+          // small offset to avoid getting stuck due to timing precision
+          video.currentTime = start + 0.01;
+          // keep playing automatically if it was playing
+          if (!video.paused) {
+            video.play();
+          }
+        }
+      });
+
+      // Optional: when the user presses "play", always start loop at `start`
+      video.addEventListener("play", () => {
+        if (video.currentTime < start || video.currentTime > end) {
+          video.currentTime = start;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
