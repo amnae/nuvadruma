@@ -113,6 +113,8 @@
           src="videos/first_vid_ffmpeg.mp4"
           controls
           playsinline
+          webkit-playsinline
+          preload="auto"
           data-start="27"
           data-end="66"
         ></video>
@@ -129,6 +131,8 @@
           src="videos/second_a_vid_ffmpeg.mp4"
           controls
           playsinline
+          webkit-playsinline
+          preload="auto"
           data-start="0"
           data-end="13"
         ></video>
@@ -145,6 +149,8 @@
           src="videos/second_a_vid_ffmpeg.mp4"
           controls
           playsinline
+          webkit-playsinline
+          preload="auto"
           data-start="13"
           data-end="22"
         ></video>
@@ -161,6 +167,8 @@
           src="videos/second_a_vid_ffmpeg.mp4"
           controls
           playsinline
+          webkit-playsinline
+          preload="auto"
           data-start="29"
           data-end="55"
         ></video>
@@ -178,6 +186,8 @@
           src="videos/second_a_vid_ffmpeg.mp4"
           controls
           playsinline
+          webkit-playsinline
+          preload="auto"
           data-start="55"
           data-end="74"
         ></video>
@@ -193,6 +203,8 @@
           src="videos/second_a_vid_ffmpeg.mp4"
           controls
           playsinline
+          webkit-playsinline
+          preload="auto"
           data-start="74"
           data-end="88"
         ></video>
@@ -284,61 +296,82 @@
       <strong>playsinline</strong>, which is why those attributes are set by default.
     </p>
   </main>
-<script>
+  <script>
   document.addEventListener("DOMContentLoaded", () => {
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
     const videos = document.querySelectorAll("video[data-start][data-end]");
 
     videos.forEach((video) => {
       let start = parseFloat(video.dataset.start) || 0;
       let end = parseFloat(video.dataset.end);
+      let isSeekingLoop = false; // flag for iOS Safari
 
       video.addEventListener("loadedmetadata", () => {
         const duration = video.duration;
-        console.log("Video duration:", duration, "seconds");
 
-        // Clamp start & end into valid range
+        // Clamp range
         if (start < 0) start = 0;
         if (isNaN(end) || end <= start) {
-          console.warn("Invalid end time, defaulting to full duration");
           end = duration - 0.05;
         }
         if (end > duration) {
-          console.warn("data-end is beyond duration, clamping.", { end, duration });
           end = duration - 0.05;
         }
 
-        // Jump to the start of the loop
-        video.currentTime = Math.min(start, duration - 0.05);
-
-        // Store the (possibly adjusted) values so timeupdate uses them
         video.dataset._loopStart = start;
         video.dataset._loopEnd = end;
+
+        if (start < duration) {
+          video.currentTime = start;
+        }
       });
 
       video.addEventListener("timeupdate", () => {
-        const loopStart = parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
-        const loopEnd = parseFloat(video.dataset._loopEnd ?? video.dataset.end);
+        const loopStart =
+          parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
+        const loopEnd =
+          parseFloat(video.dataset._loopEnd ?? video.dataset.end);
 
-        if (!isNaN(loopEnd) && video.currentTime >= loopEnd) {
-          // Jump back to the loop start
+        if (isNaN(loopEnd)) return;
+
+        if (!isSeekingLoop && video.currentTime >= loopEnd) {
+          // Mark that we're doing a manual seek for the loop
+          isSeekingLoop = true;
+          // Jump back near the start
           video.currentTime = loopStart + 0.01;
+        }
+      });
+
+      // When the seek finishes, resume play if we were looping
+      video.addEventListener("seeked", () => {
+        if (isSeekingLoop) {
+          isSeekingLoop = false;
+          // On iOS Safari it's safer to re-call play() here
           if (!video.paused) {
             video.play();
           }
         }
       });
 
-      // Optional: when user hits play, make sure we start inside the loop
+      // Optional: when user hits play, start inside the loop range
       video.addEventListener("play", () => {
-        const loopStart = parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
-        const loopEnd = parseFloat(video.dataset._loopEnd ?? video.dataset.end);
-        if (video.currentTime < loopStart || (!isNaN(loopEnd) && video.currentTime > loopEnd)) {
+        const loopStart =
+          parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
+        const loopEnd =
+          parseFloat(video.dataset._loopEnd ?? video.dataset.end);
+        if (
+          video.currentTime < loopStart ||
+          (!isNaN(loopEnd) && video.currentTime > loopEnd)
+        ) {
           video.currentTime = loopStart;
         }
       });
     });
   });
 </script>
+
 
 </body>
 </html>
