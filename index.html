@@ -98,17 +98,30 @@
   <main>
     <section class="grid">
       <!-- VIDEO 1 -->
+
+        <article class="video-card">
+        <h2>TEST</h2>
+        <div class="video-meta">
+          Loop from <span>2s</span> to <span>8s</span>.
+        </div>
+        <video
+          src="videos/first_vid_ffmpeg.mp4"
+          controls
+          playsinline
+          webkit-playsinline
+          muted
+          preload="auto"
+          data-start="0"
+          data-end="5"
+        ></video>
+      </article>
+      
+      
       <article class="video-card">
         <h2>Video 1</h2>
         <div class="video-meta">
           Loop from <span>2s</span> to <span>8s</span>.
         </div>
-
-        <!--
-          IMPORTANT:
-          - Replace "videos/video1.mp4" with your file path.
-          - data-start / data-end are in SECONDS.
-        -->
         <video
           src="videos/first_vid_ffmpeg.mp4"
           controls
@@ -306,18 +319,18 @@
       <strong>playsinline</strong>, which is why those attributes are set by default.
     </p>
   </main>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var videos = document.querySelectorAll("video[data-start][data-end]");
 
-  <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const videos = document.querySelectorAll("video[data-start][data-end]");
+    // Turn NodeList into an array-like loop for older browsers
+    Array.prototype.forEach.call(videos, function (video) {
+      var start = parseFloat(video.getAttribute("data-start")) || 0;
+      var end = parseFloat(video.getAttribute("data-end"));
+      var loopTimer = null;
 
-    videos.forEach((video) => {
-      let start = parseFloat(video.dataset.start) || 0;
-      let end = parseFloat(video.dataset.end);
-      let loopTimer = null;
-
-      video.addEventListener("loadedmetadata", () => {
-        const duration = video.duration;
+      video.addEventListener("loadedmetadata", function () {
+        var duration = video.duration;
 
         // Clamp values into valid range
         if (start < 0) start = 0;
@@ -328,8 +341,9 @@
           end = duration - 0.05;
         }
 
-        video.dataset._loopStart = start;
-        video.dataset._loopEnd = end;
+        // Store adjusted values in data-* attributes
+        video.setAttribute("data-loop-start", start);
+        video.setAttribute("data-loop-end", end);
 
         // Start the video at the loop start
         if (start < duration) {
@@ -338,11 +352,16 @@
       });
 
       // When user presses play, start a timer to enforce the loop
-      video.addEventListener("play", () => {
-        const loopStart =
-          parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
-        const loopEnd =
-          parseFloat(video.dataset._loopEnd ?? video.dataset.end);
+      video.addEventListener("play", function () {
+        var loopStartAttr =
+          video.getAttribute("data-loop-start") ||
+          video.getAttribute("data-start");
+        var loopEndAttr =
+          video.getAttribute("data-loop-end") ||
+          video.getAttribute("data-end");
+
+        var loopStart = parseFloat(loopStartAttr) || 0;
+        var loopEnd = parseFloat(loopEndAttr);
 
         // Make sure we start inside the loop window
         if (
@@ -355,33 +374,39 @@
         // Clear any existing timer
         if (loopTimer) clearInterval(loopTimer);
 
-        // Check position every 50ms while playing
-        loopTimer = setInterval(() => {
+        // Check position regularly while playing
+        loopTimer = setInterval(function () {
           if (video.paused || video.readyState < 2) return;
 
-          const now = video.currentTime;
-          const s =
-            parseFloat(video.dataset._loopStart ?? video.dataset.start) || 0;
-          const e =
-            parseFloat(video.dataset._loopEnd ?? video.dataset.end);
+          var now = video.currentTime;
+
+          var sAttr =
+            video.getAttribute("data-loop-start") ||
+            video.getAttribute("data-start");
+          var eAttr =
+            video.getAttribute("data-loop-end") ||
+            video.getAttribute("data-end");
+
+          var s = parseFloat(sAttr) || 0;
+          var e = parseFloat(eAttr);
 
           if (!isNaN(e) && now >= e) {
-            // Just jump back – no extra play() call needed
+            // Jump back near the start; no extra play() needed
             video.currentTime = s + 0.01;
           }
-        }, 50);
+        }, 80);
       });
 
       // Stop timer when paused
-      video.addEventListener("pause", () => {
+      video.addEventListener("pause", function () {
         if (loopTimer) {
           clearInterval(loopTimer);
           loopTimer = null;
         }
       });
 
-      // Also clear timer when playback really ends
-      video.addEventListener("ended", () => {
+      // Also clear timer when playback ends
+      video.addEventListener("ended", function () {
         if (loopTimer) {
           clearInterval(loopTimer);
           loopTimer = null;
@@ -390,6 +415,7 @@
     });
   });
 </script>
+
 
 
 
